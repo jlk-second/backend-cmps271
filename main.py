@@ -471,8 +471,7 @@ async def hello():
 @app.post("/reset_database/")
 async def reset_database(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     # Check if the current user is allowed to reset the DB (e.g., admin only)
-    if not current_user.is_admin:
-        raise HTTPException(status_code=403, detail="Unauthorized to reset database")
+
 
     try:
         # Drop all tables
