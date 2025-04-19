@@ -467,5 +467,23 @@ async def fetch_stock_news(
 @app.get("/")
 async def hello():
     return {"message": "Hello, World!"}
+    
+@app.post("/reset_database/")
+async def reset_database(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # Check if the current user is allowed to reset the DB (e.g., admin only)
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Unauthorized to reset database")
+
+    try:
+        # Drop all tables
+        Base.metadata.drop_all(bind=engine)
+        # Recreate all tables
+        Base.metadata.create_all(bind=engine)
+        
+       
+
+        return {"message": "Database has been reset successfully."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to reset database: {str(e)}")
 
 
