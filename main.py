@@ -87,10 +87,6 @@ class Budget(Base):
     
     parent_budget = relationship("Budget", remote_side=[id], backref="sub_budgets")
 
-class ToBuyItem(Base):
-    __tablename__ = "to_buy_items"
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True)
 
 # Create all tables
 Base.metadata.create_all(bind=engine)
@@ -139,9 +135,6 @@ class TransactionCreate(BaseModel):
     quantity: int
     budget_id: int  # New field for budget_id
     amount: int
-
-class ToBuyItemCreate(BaseModel):
-    name: str
 
 
 
@@ -470,6 +463,7 @@ async def fetch_stock_news(
     except requests.exceptions.RequestException as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch news: {str(e)}")
 
+
 @app.get("/")
 async def hello():
     return {"message": "Hello, World!"}
@@ -477,7 +471,9 @@ async def hello():
 @app.post("/reset_database/")
 async def reset_database(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     # Check if the current user is allowed to reset the DB (e.g., admin only)
-    
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Unauthorized to reset database")
+
     try:
         # Drop all tables
         Base.metadata.drop_all(bind=engine)
@@ -489,38 +485,4 @@ async def reset_database(db: Session = Depends(get_db), current_user: User = Dep
         return {"message": "Database has been reset successfully."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to reset database: {str(e)}")
-    
 
-@app.post("/to_buy/")
-async def add_to_buy_item(
-    item: ToBuyItemCreate, 
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)  # if you want it protected
-):
-    db_item = ToBuyItem(name=item.name)
-    db.add(db_item)
-    db.commit()
-    db.refresh(db_item)
-    return {"message": f"'{db_item.name}' added to To-Buy list!"}
-
-@app.get("/to_buy/")
-async def get_to_buy_items(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    items = db.query(ToBuyItem).all()
-    return {"to_buy": items}
-
-
-@app.delete("/to_buy/{item_id}")
-async def delete_to_buy_item(
-    item_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    item = db.query(ToBuyItem).filter(ToBuyItem.id == item_id).first()
-    if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
-    db.delete(item)
-    db.commit()
-    return {"message": f"Item '{item.name}' deleted from To-Buy list"}
